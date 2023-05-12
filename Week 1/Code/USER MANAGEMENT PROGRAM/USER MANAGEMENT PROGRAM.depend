@@ -1,0 +1,6 @@
+# depslib dependency file v1.0
+1679948209 source:e:\20222\computer programming\week 1\code\user management program\main.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+

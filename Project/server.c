@@ -15,13 +15,20 @@
 
 #include "account.h"
 #include "check_login.h"
+#include "product.h"
 
 #define BACKLOG 20
 #define BUFF_SIZE 1024
 #define MAX_CLIENTS 10
+#define MAX_PRODUCTS 100
+
+Product products[MAX_PRODUCTS];
+int numProducts = 0;
 
 extern Account accounts[MAX_ACCOUNTS];
 extern int num_accounts;
+
+void readProducts(Product products[], int maxProducts, const char *filename, int *numProducts);
 
 int main(int argc, char *argv[])
 {
@@ -148,12 +155,49 @@ int main(int argc, char *argv[])
                     Account *account = get_logged_in_account(sd);
                     if (account != NULL)
                     {
+                        // In thông tin về các sản phẩm được chọn
+                        char productsInfo[BUFF_SIZE * 6 + 1];
+                        productsInfo[BUFF_SIZE * 6 + 1] = '\0';
                         buff[bytes_received] = '\0';
                         // This client has logged in, treat the received string as a normal message.
                         printf("Received message from %s: %s\n", account->userID, buff);
-                        char reply[BUFF_SIZE * 2 + 1];
-                        sprintf(reply, "Server received message: %s", buff);
-                        send(sd, reply, strlen(reply), 0);
+                        if (strcmp(buff, "ready") == 0)
+                        {
+                            char reply[BUFF_SIZE * 2 + 1];
+                            sprintf(reply, "%s", "Bắt đầu trò chơi (type 'get' to get product info)");
+                            send(sd, reply, strlen(reply), 0);
+                            readProducts(products, MAX_PRODUCTS, "product.txt", &numProducts);
+                            // Bước 3: Chọn ngẫu nhiên 3 sản phẩm để chơi
+                            int selectedProducts[3];
+                            for (int i = 0; i < 3; i++)
+                            {
+                                selectedProducts[i] = rand() % numProducts;
+
+                                // Kiểm tra giá trị đã được chọn trước đó
+                                for (int j = 0; j < i; j++)
+                                {
+                                    if (selectedProducts[i] == selectedProducts[j])
+                                    {
+                                        // Giá trị đã trùng lặp, chọn lại giá trị khác
+                                        i--;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            printf("Các sản phẩm để chơi trò đếm ngược:\n");
+                            for (int i = 0; i < 3; i++)
+                            {
+                                printf("Sản phẩm %d:\n", i + 1);
+                                printf("Tên: %s\n", products[selectedProducts[i]].name);
+                                printf("Giá: %d\n", products[selectedProducts[i]].price);
+                                char productInfo[BUFF_SIZE * 2 + 1];
+                                sprintf(productInfo, "Sản phẩm %d:\nTên: %s\nGiá: %d\n", i + 1, products[selectedProducts[i]].name, products[selectedProducts[i]].price);
+                                strcat(productsInfo, productInfo);
+                            }
+                            // Gửi chuỗi productsInfo tới client
+                            send(sd, productsInfo, strlen(productsInfo), 0);
+                        }
                     }
                     else
                     {

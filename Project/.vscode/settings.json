@@ -2,6 +2,8 @@
     "files.associations": {
         "*.ejs": "html",
         "account.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "time.h": "c",
+        "product.h": "c"
     }
 }

@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            printf("\nInsert string to send (type 'exit' to quit): ");
+            printf("\nInsert string to send (type 'exit' to quit, type 'ready' to play): ");
             memset(buff, '\0', (strlen(buff) + 1));
             fgets(buff, BUFF_SIZE, stdin);
             buff[strlen(buff) - 1] = '\0';
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
                 printf("Connection closed.\n");
 
             buff[bytes_received] = '\0';
-            printf("Reply from server: %s\n", buff);
+            printf("Reply from server:\n%s", buff);
         }
     }
 

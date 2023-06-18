@@ -28,7 +28,7 @@ void load_accounts()
 
     while (!feof(file) && num_accounts < MAX_ACCOUNTS)
     {
-        fscanf(file, "%s %s %d\n", accounts[num_accounts].userID, accounts[num_accounts].password, &accounts[num_accounts].status);
+        fscanf(file, "%s %s %d %d\n", accounts[num_accounts].userID, accounts[num_accounts].password, &accounts[num_accounts].point, &accounts[num_accounts].status);
         accounts[num_accounts].client_id = -1;
         accounts[num_accounts].attempt = 0;
         num_accounts++;
@@ -48,7 +48,7 @@ void update_accounts()
 
     for (int i = 0; i < num_accounts; i++)
     {
-        fprintf(file, "%s %s %d\n", accounts[i].userID, accounts[i].password, accounts[i].status);
+        fprintf(file, "%s %s %d %d\n", accounts[i].userID, accounts[i].password, accounts[i].point, accounts[i].status);
     }
 
     fclose(file);

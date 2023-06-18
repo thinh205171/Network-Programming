@@ -16,10 +16,11 @@
 #include "account.h"
 #include "check_login.h"
 #include "product.h"
+#include "demnguoc.h"
 
 #define BACKLOG 20
 #define BUFF_SIZE 1024
-#define MAX_CLIENTS 10
+#define MAX_CLIENTS 100
 #define MAX_PRODUCTS 100
 
 Product products[MAX_PRODUCTS];
@@ -29,6 +30,92 @@ extern Account accounts[MAX_ACCOUNTS];
 extern int num_accounts;
 
 void readProducts(Product products[], int maxProducts, const char *filename, int *numProducts);
+
+void send_data(int socket, const char *data)
+{
+    int bytes_sent = send(socket, data, strlen(data), 0);
+    if (bytes_sent == -1)
+    {
+        perror("Error sending data");
+    }
+}
+
+void receive_data(int socket, char *buffer, int buffer_size)
+{
+    int bytes_received = recv(socket, buffer, buffer_size - 1, 0);
+    if (bytes_received == -1)
+    {
+        perror("Error receiving data");
+    }
+    else if (bytes_received == 0)
+    {
+        // Client đã ngắt kết nối
+        printf("Client disconnected\n");
+    }
+    else
+    {
+        buffer[bytes_received] = '\0'; // Đảm bảo kết thúc chuỗi
+        printf("Received data from client: %s\n", buffer);
+    }
+}
+
+void save_account_to_file(const char *username, const char *password)
+{
+    FILE *file = fopen("account.txt", "a");
+    if (file == NULL)
+    {
+        printf("Error opening file.\n");
+        return;
+    }
+
+    fprintf(file, "%s %s %d %d\n", username, password, 1, 100);
+
+    fclose(file);
+}
+
+void handle_signup(const char *data, int client_id)
+{
+    char username[BUFF_SIZE * 3];
+    char password[BUFF_SIZE * 3];
+
+    sscanf(data, "%s %s", username, password);
+
+    for (int i = 0; i < MAX_CLIENTS; i++)
+    {
+        if (accounts[i].client_id == client_id)
+        {
+            send_data(client_id, "This account is already logged in.\n");
+            return;
+        }
+
+        if (strcmp(accounts[i].userID, username) == 0)
+        {
+            send_data(client_id, "Account already exists.\n");
+            return;
+        }
+    }
+
+    for (int i = 0; i < MAX_CLIENTS; i++)
+    {
+        if (accounts[i].client_id == 0)
+        {
+            accounts[i].client_id = client_id;
+            accounts[i].logged_in = 1;
+            strcpy(accounts[i].userID, username);
+            strcpy(accounts[i].password, password);
+            accounts[i].point = 100; // Gán giá trị mặc định cho điểm
+
+            printf("New account created: %s\n", accounts[i].userID);
+            send_data(client_id, "Account created successfully.\n");
+
+            // Lưu thông tin tài khoản vào tệp tin
+            save_account_to_file(username, password);
+            return;
+        }
+    }
+
+    send_data(client_id, "Maximum number of accounts reached.\n");
+}
 
 int main(int argc, char *argv[])
 {
@@ -153,9 +240,9 @@ int main(int argc, char *argv[])
                 else
                 {
                     Account *account = get_logged_in_account(sd);
+                    int selectedProducts[10];
                     if (account != NULL)
                     {
-                        // In thông tin về các sản phẩm được chọn
                         char productsInfo[BUFF_SIZE * 6 + 1];
                         productsInfo[BUFF_SIZE * 6 + 1] = '\0';
                         buff[bytes_received] = '\0';
@@ -164,29 +251,27 @@ int main(int argc, char *argv[])
                         if (strcmp(buff, "ready") == 0)
                         {
                             char reply[BUFF_SIZE * 2 + 1];
-                            sprintf(reply, "%s", "Bắt đầu trò chơi (type 'get' to get product info)");
-                            send(sd, reply, strlen(reply), 0);
+                            sprintf(reply, "%s", "Bắt đầu trò chơi (type 'grocery' to get product info)");
+                            send_data(sd, reply);
                             readProducts(products, MAX_PRODUCTS, "product.txt", &numProducts);
-                            // Bước 3: Chọn ngẫu nhiên 3 sản phẩm để chơi
-                            int selectedProducts[3];
-                            for (int i = 0; i < 3; i++)
+                            for (int i = 0; i < 5; i++) // Chọn ngẫu nhiên 3 sản phẩm để chơi
                             {
                                 selectedProducts[i] = rand() % numProducts;
-
-                                // Kiểm tra giá trị đã được chọn trước đó
-                                for (int j = 0; j < i; j++)
+                                for (int j = 0; j < i; j++) // Kiểm tra giá trị đã được chọn trước đó
                                 {
                                     if (selectedProducts[i] == selectedProducts[j])
                                     {
-                                        // Giá trị đã trùng lặp, chọn lại giá trị khác
-                                        i--;
+                                        i--; // Giá trị đã trùng lặp, chọn lại giá trị khác
                                         break;
                                     }
                                 }
                             }
-
+                            // buff[bytes_received] = '\0';
+                        }
+                        else if (strcmp(buff, "grocery") == 0)
+                        {
                             printf("Các sản phẩm để chơi trò đếm ngược:\n");
-                            for (int i = 0; i < 3; i++)
+                            for (int i = 0; i < 5; i++)
                             {
                                 printf("Sản phẩm %d:\n", i + 1);
                                 printf("Tên: %s\n", products[selectedProducts[i]].name);
@@ -196,13 +281,29 @@ int main(int argc, char *argv[])
                                 strcat(productsInfo, productInfo);
                             }
                             // Gửi chuỗi productsInfo tới client
-                            send(sd, productsInfo, strlen(productsInfo), 0);
+                            send_data(sd, productsInfo);
+                            productsInfo[0] = '\0';
+                        }
+                        else if (strcmp(buff, "logout") == 0)
+                        {
+                            send_data(sd, "See you again!!\n");
+                        }
+                        else
+                        {
+                            send_data(sd, "Invalid command\n");
                         }
                     }
                     else
                     {
                         buff[bytes_received] = '\0';
-                        if (strlen(buff) > 0)
+
+                        // if (strcmp(buff, "signup") == 0)
+                        // {
+                        //     handle_signup(buff, sd);
+                        //     break;
+                        // }
+                        // if (strcmp(buff, "login") == 0)
+                        if(strlen(buff) > 0)
                         {
                             handle_login(buff, sd, account);
                             break;

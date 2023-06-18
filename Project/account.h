@@ -11,6 +11,7 @@ typedef struct
     char userID[BUFF_SIZE];
     char password[BUFF_SIZE];
     int status;
+    int point;
     int client_id;
     int logged_in;
     int attempt;

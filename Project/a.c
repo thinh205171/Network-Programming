@@ -63,9 +63,8 @@ int main(int argc, char *argv[])
     int attempts = 0;
     bool is_game_started = false;
     int choice = 0;
-    bool should_exit = false; // Biến boolean để kiểm tra khi client cần thoát
 
-    while (!should_exit) // Thay đổi điều kiện dừng của vòng lặp
+    while (1)
     {
         if (!is_logged_in)
         {
@@ -81,64 +80,21 @@ int main(int argc, char *argv[])
             switch (choice)
             {
             case 1:
-            {
-                // bytes_sent = send(client_sock, "singup", strlen("signup"), 0);
-                // if (bytes_sent < 0)
-                //     perror("\nError: ");
-
-                char signup_username[BUFF_SIZE * 2 + 1], signup_password[BUFF_SIZE * 2 + 1];
-
-                printf("Username: ");
-                fgets(signup_username, BUFF_SIZE * 2, stdin);
-                signup_username[strcspn(signup_username, "\n")] = '\0'; // Xóa ký tự newline (\n) khi nhập từ bàn phím
-
-                printf("Password: ");
-                fgets(signup_password, BUFF_SIZE * 2, stdin);
-                signup_password[strcspn(signup_password, "\n")] = '\0'; // Xóa ký tự newline (\n) khi nhập từ bàn phím
-
-                char signup_info[BUFF_SIZE * 5];
-                sprintf(signup_info, "%s %s", signup_username, signup_password);
-
-                bytes_sent = send(client_sock, signup_info, strlen(signup_info), 0);
-                if (bytes_sent < 0)
-                    perror("\nError: ");
-
-                bytes_received = recv(client_sock, buff, BUFF_SIZE, 0);
-                if (bytes_received < 0)
-                    perror("\nError: ");
-                else if (bytes_received == 0)
-                    printf("Connection closed.\n");
-
-                buff[bytes_received] = '\0';
-                printf("%s\n", buff);
-
-                bytes_received = recv(client_sock, buff, BUFF_SIZE, 0);
-                if (bytes_received < 0)
-                    perror("\nError: ");
-                else if (bytes_received == 0)
-                    printf("Connection closed.\n");
-
-                buff[bytes_received] = '\0';
-                printf("%s\n", buff);
+                // Xử lý Sign up
                 break;
-            }
             case 2:
-            {
-                // bytes_sent = send(client_sock, "login", strlen("login"), 0);
-                // if (bytes_sent < 0)
-                //     perror("\nError: ");
-                char login_username[BUFF_SIZE], login_password[BUFF_SIZE];
+                char username[BUFF_SIZE], password[BUFF_SIZE];
 
                 printf("Username: ");
-                fgets(login_username, BUFF_SIZE, stdin);
-                login_username[strlen(login_username) - 1] = '\0';
+                fgets(username, BUFF_SIZE, stdin);
+                username[strlen(username) - 1] = '\0';
 
                 printf("Password: ");
-                fgets(login_password, BUFF_SIZE, stdin);
-                login_password[strlen(login_password) - 1] = '\0';
+                fgets(password, BUFF_SIZE, stdin);
+                password[strlen(password) - 1] = '\0';
 
                 char login_info[BUFF_SIZE * 2 + 1];
-                sprintf(login_info, "%s %s", login_username, login_password);
+                sprintf(login_info, "%s %s", username, password);
 
                 bytes_sent = send(client_sock, login_info, strlen(login_info), 0);
                 if (bytes_sent < 0)
@@ -165,16 +121,17 @@ int main(int argc, char *argv[])
                     if (attempts >= MAX_ATTEMPTS)
                     {
                         printf("Max login attempts exceeded.\n");
-                        should_exit = true; // Đặt biến should_exit thành true
+                        close(client_sock);
+                        return 0;
                     }
                 }
                 break;
-            }
-
             case 3:
                 // Gửi thông báo đăng xuất tới server trước khi ngắt kết nối
-                should_exit = true; // Đặt biến should_exit thành true
-                break;
+                char logout_msg[] = "logout";
+                send(client_sock, logout_msg, strlen(logout_msg), 0);
+                close(client_sock);
+                return 0;
             default:
                 printf("Invalid choice. Please try again.\n");
                 continue;
@@ -197,7 +154,11 @@ int main(int argc, char *argv[])
                 is_game_started = true; // Đặt biến cờ thành true khi trò chơi bắt đầu
             }
             if (strcmp(trimmed_buff, "logout") == 0)
+            {
+                // Gửi thông báo đăng xuất tới server trước khi ngắt kết nối
                 is_logged_in = false;
+                // break;
+            }
 
             msg_len = strlen(buff);
 
